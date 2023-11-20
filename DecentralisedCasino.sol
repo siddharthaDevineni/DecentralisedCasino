@@ -5,7 +5,11 @@ contract DecentralisedCasino {
     mapping(address => uint256) blockNumbersToBeUsed;
     mapping(address => uint256) gameEthValues;
 
-    function fundBank() external payable {}
+    address[] public lastThreeWinners;
+
+    function receive() external payable {
+        playGame();
+    }
 
     function playGame() external payable {
         uint256 blockNumberToBeUsed = blockNumbersToBeUsed[msg.sender];
@@ -18,12 +22,23 @@ contract DecentralisedCasino {
         }
 
         require(block.number >= blockNumberToBeUsed, "DeCasino: Too early");
+        require(block.number < blockNumbersToBeUsed[msg.sender], "Too late");
+
         uint256 randomNumber = block.prevrandao;
 
         if (randomNumber % 2 == 0) {
             uint256 winningAmount = gameEthValues[msg.sender] * 2;
             (bool success, ) = msg.sender.call{value: winningAmount}("");
             require(success, "Transfer failed");
+        }
+
+        lastThreeWinners.push(msg.sender);
+
+        if (lastThreeWinners.length > 3) {
+            lastThreeWinners[0] = lastThreeWinners[1];
+            lastThreeWinners[1] = lastThreeWinners[2];
+            lastThreeWinners[2] = lastThreeWinners[3];
+            lastThreeWinners.pop();
         }
 
         blockNumbersToBeUsed[msg.sender] = 0;
